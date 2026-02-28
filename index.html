@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CropGuard - Leaf Health Detector</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 40px 0;
+            color: white;
+        }
+
+        header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .upload-section, .result-section {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #2d3748;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .upload-area {
+            border: 3px dashed #cbd5e0;
+            border-radius: 15px;
+            padding: 60px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f7fafc;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #edf2f7;
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #e6fffa;
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            font-size: 1.1rem;
+            color: #4a5568;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            font-size: 0.9rem;
+            color: #718096;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .preview-container {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .preview-container.active {
+            display: block;
+        }
+
+        .preview-image {
+            width: 100%;
+            max-height: 300px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .analyze-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .analyze-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result-section {
+            min-height: 400px;
+        }
+
+        .result-placeholder {
+            text-align: center;
+            padding: 80px 20px;
+            color: #a0aec0;
+        }
+
+        .result-placeholder-icon {
+            font-size: 4rem;
+            margin-bottom: 15px;
+        }
+
+        .result-content {
+            display: none;
+        }
+
+        .result-content.active {
+            display: block;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid #e2e8f0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .health-status {
+            text-align: center;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+        }
+
+        .health-status.healthy {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+        }
+
+        .health-status.diseased {
+            background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+            color: white;
+        }
+
+        .health-status.moderate {
+            background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+            color: white;
+        }
+
+        .status-icon {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+
+        .status-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .status-disease {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .confidence-bar {
+            background: rgba(255,255,255,0.3);
+            border-radius: 10px;
+            height: 10px;
+            margin-top: 15px;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: white;
+            border-radius: 10px;
+            transition: width 1s ease;
+        }
+
+        .confidence-text {
+            font-size: 0.9rem;
+            margin-top: 8px;
+            opacity: 0.9;
+        }
+
+        .info-card {
+            background: #f7fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+
+        .info-card-title {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-card-content {
+            color: #4a5568;
+            line-height: 1.6;
+        }
+
+        .solution-list {
+            list-style: none;
+        }
+
+        .solution-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .solution-list li:last-child {
+            border-bottom: none;
+        }
+
+        .solution-icon {
+            color: #48bb78;
+            font-weight: bold;
+        }
+
+        .categories-section {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .categories-title {
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+
+        .categories-subtitle {
+            text-align: center;
+            color: #718096;
+            margin-bottom: 30px;
+        }
+
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .category-card {
+            background: #f7fafc;
+            border-radius: 15px;
+            padding: 25px;
+            transition: transform 0.3s, box-shadow 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .category-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }
+
+        .category-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+        }
+
+        .category-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 8px;
+        }
+
+        .category-description {
+            color: #718096;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .category-symptoms {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .category-symptoms-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 5px;
+        }
+
+        .category-symptoms-list {
+            font-size: 0.85rem;
+            color: #718096;
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px 0;
+            color: white;
+            opacity: 0.8;
+        }
+
+        .reset-btn {
+            background: #e2e8f0;
+            color: #4a5568;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-top: 15px;
+            transition: background 0.2s;
+        }
+
+        .reset-btn:hover {
+            background: #cbd5e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌿 CropGuard</h1>
+            <p>AI-Powered Leaf Health Detection & Disease Diagnosis</p>
+        </header>
+
+        <div class="main-content">
+            <div class="upload-section">
+                <h2 class="section-title">
+                    <span>📤</span>
+                    Upload Leaf Image
+                </h2>
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">🌱</div>
+                    <div class="upload-text">Drop your leaf image here or click to browse</div>
+                    <div class="upload-hint">Supports: JPG, PNG, WEBP (Max 10MB)</div>
+                </div>
+                <input type="file" id="fileInput" accept="image/*">
+                
+                <div class="preview-container" id="previewContainer">
+                    <img class="preview-image" id="previewImage" alt="Preview">
+                    <button class="analyze-btn" id="analyzeBtn">🔍 Analyze Leaf Health</button>
+                    <button class="reset-btn" id="resetBtn">Upload Different Image</button>
+                </div>
+            </div>
+
+            <div class="result-section">
+                <h2 class="section-title">
+                    <span>📊</span>
+                    Analysis Results
+                </h2>
+                
+                <div class="result-placeholder" id="resultPlaceholder">
+                    <div class="result-placeholder-icon">🔬</div>
+                    <p>Upload an image to see the analysis results</p>
+                </div>
+
+                <div class="loading" id="loading" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>Analyzing leaf health...</p>
+                </div>
+
+                <div class="result-content" id="resultContent">
+                    <div class="health-status" id="healthStatus">
+                        <div class="status-icon" id="statusIcon">✅</div>
+                        <div class="status-title" id="statusTitle">Healthy</div>
+                        <div class="status-disease" id="statusDisease">No disease detected</div>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" id="confidenceFill" style="width: 0%"></div>
+                        </div>
+                        <div class="confidence-text" id="confidenceText">Confidence: 95%</div>
+                    </div>
+
+                    <div class="info-card">
+                        <div class="info-card-title">
+                            <span>📝</span>
+                            Description
+                        </div>
+                        <div class="info-card-content" id="diseaseDescription">
+                            The leaf appears to be healthy with no visible signs of disease or pest damage.
+                        </div>
+                    </div>
+
+                    <div class="info-card">
+                        <div class="info-card-title">
+                            <span>💊</span>
+                            Recommended Solutions
+                        </div>
+                        <ul class="solution-list" id="solutionList">
+                            <li><span class="solution-icon">✓</span> Continue regular watering schedule</li>
+                            <li><span class="solution-icon">✓</span> Maintain proper sunlight exposure</li>
+                            <li><span class="solution-icon">✓</span> Monitor for any changes in leaf color</li>
+                        </ul>
+                    </div>
+
+                    <div class="info-card">
+                        <div class="info-card-title">
+                            <span>🛡️</span>
+                            Prevention Tips
+                        </div>
+                        <ul class="solution-list" id="preventionList">
+                            <li><span class="solution-icon">✓</span> Ensure good air circulation</li>
+                            <li><span class="solution-icon">✓</span> Avoid overwatering</li>
+                            <li><span class="solution-icon">✓</span> Regular inspection of plants</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="categories-section">
+            <h2 class="categories-title">Common Leaf Diseases</h2>
+            <p class="categories-subtitle">Learn about different types of crop diseases we can detect</p>
+            
+            <div class="categories-grid">
+                <div class="category-card">
+                    <div class="category-icon">🍂</div>
+                    <div class="category-name">Leaf Spot Diseases</div>
+                    <div class="category-description">
+                        Fungal or bacterial infections causing spots on leaves. Common in tomatoes, peppers, and leafy greens.
+                    </div>
+                    <div class="category-symptoms">
+                        <div class="category-symptoms-title">Symptoms:</div>
+                        <div class="category-symptoms-list">Brown/black spots, yellow halos, leaf drop</div>
+                    </div>
+                </div>
+
+                <div class="category-card">
+                    <div class="category-icon">🦠</div>
+                    <div class="category-name">Blight</div>
+                    <div class="category-description">
+                        Rapid spread of disease causing wilting and death of plant tissue. Affects tomatoes, potatoes, and corn.
+                    </div>
+                    <div class="category-symptoms">
+                        <div class="category-symptoms-title">Symptoms:</div>
+                        <div class="category-symptoms-list">Brown lesions, rapid wilting, stem cankers</div>
+                    </div>
+                </div>
+
+                <div class="category-card">
+                    <div class="category-icon">🍃</div>
+                    <div class="category-name">Powdery Mildew</div>
+                    <div class="category-description">
+                        White powdery fungal growth on leaf surfaces. Common in cucumbers, squash, and grapes.
+                    </div>
+                    <div class="category-symptoms">
+                        <div class="category-symptoms-title">Symptoms:</div>
+                        <div class="category-symptoms-list">White powdery coating, leaf curling, stunted growth</div>
+                    </div>
+                </div>
+
+                <div class="category-card">
+                    <div class="category-icon">🌾</div>
+                    <div class="category-name">Rust</div>
+                    <div class="category-description">
+                        Fungal disease producing rust-colored spores. Affects wheat, beans, and roses.
+                    </div>
+                    <div class="category-symptoms">
+                        <div class="category-symptoms-title">Symptoms:</div>
+                        <div class="category-symptoms-list">Orange/brown pustules, yellowing leaves, defoliation</div>
+                    </div>
+                </div>
+
+                <div class="category-card">
+                    <div class="category-icon">🥀</div>
+                    <div class="category-name">Wilt Diseases</div>
+                    <div class="category-description">
+                        Vascular diseases causing plants to wilt and die. Includes Fusarium and Verticillium wilt.
+                    </div>
+                    <div class="category-symptoms">
+                        <div class="category-symptoms-title">Symptoms:</div>
+                        <div class="category-symptoms-list">Yellowing, wilting, vascular discoloration</div>
+                    </div>
+                </div>
+
+                <div class="category-card">
+                    <div class="category-icon">🐛</div>
+                    <div class="category-name">Pest Damage</div>
+                    <div class="category-description">
+                        Damage caused by insects and pests including aphids, caterpillars, and mites.
+                    </div>
+                    <div class="category-symptoms">
+                        <div class="category-symptoms-title">Symptoms:</div>
+                        <div class="category-symptoms-list">Holes in leaves, chewed edges, sticky residue</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>© 2026 CropGuard | AI-Powered Crop Disease Detection</p>
+        </footer>
+    </div>
+
+    <script>
+        // API Configuration
+        const API_BASE_URL = 'http://localhost:3000/api';
+
+        // Disease database with solutions (fallback if API fails)
+        const diseaseDatabase = {
+            healthy: {
+                name: "Healthy",
+                description: "The leaf appears to be healthy with no visible signs of disease or pest damage. The color is vibrant and the structure is intact.",
+                solutions: [
+                    "Continue regular watering schedule",
+                    "Maintain proper sunlight exposure",
+                    "Monitor for any changes in leaf color",
+                    "Apply balanced fertilizer as needed"
+                ],
+                prevention: [
+                    "Ensure good air circulation around plants",
+                    "Avoid overwatering - water at the base",
+                    "Regular inspection of plants for early detection",
+                    "Practice crop rotation annually"
+                ],
+                icon: "✅",
+                class: "healthy"
+            },
+            leafSpot: {
+                name: "Leaf Spot Disease",
+                description: "Fungal or bacterial infection causing distinct spots on leaves. The spots may vary in color from brown to black, often with yellow halos.",
+                solutions: [
+                    "Remove and destroy infected leaves immediately",
+                    "Apply copper-based fungicide or neem oil",
+                    "Improve air circulation by pruning",
+                    "Water at the base to avoid wetting foliage"
+                ],
+                prevention: [
+                    "Space plants properly for air flow",
+                    "Avoid overhead watering",
+                    "Clean garden tools regularly",
+                    "Use disease-resistant varieties"
+                ],
+                icon: "⚠️",
+                class: "diseased"
+            },
+            blight: {
+                name: "Blight",
+                description: "A serious disease causing rapid browning and death of plant tissue. Can spread quickly and destroy entire crops.",
+                solutions: [
+                    "Remove and destroy all infected plant material",
+                    "Apply appropriate fungicide immediately",
+                    "Avoid working with wet plants",
+                    "Consider removing severely infected plants"
+                ],
+                prevention: [
+                    "Practice crop rotation (3-4 years)",
+                    "Use certified disease-free seeds",
+                    "Maintain proper plant spacing",
+                    "Apply preventive fungicides in humid weather"
+                ],
+                icon: "🚨",
+                class: "diseased"
+            },
+            powderyMildew: {
+                name: "Powdery Mildew",
+                description: "Fungal disease appearing as white powdery patches on leaves. Thrives in humid conditions with poor air circulation.",
+                solutions: [
+                    "Apply sulfur-based fungicide or potassium bicarbonate",
+                    "Prune to improve air circulation",
+                    "Remove severely infected leaves",
+                    "Spray with milk solution (1:9 milk:water)"
+                ],
+                prevention: [
+                    "Plant in sunny locations",
+                    "Ensure adequate spacing between plants",
+                    "Avoid excessive nitrogen fertilizer",
+                    "Water in the morning to allow drying"
+                ],
+                icon: "⚠️",
+                class: "moderate"
+            },
+            rust: {
+                name: "Rust Disease",
+                description: "Fungal disease producing orange, yellow, or brown pustules on leaf undersides. Can cause significant yield loss.",
+                solutions: [
+                    "Remove and destroy infected plant parts",
+                    "Apply sulfur or copper fungicide",
+                    "Avoid overhead irrigation",
+                    "Improve air circulation around plants"
+                ],
+                prevention: [
+                    "Plant resistant varieties when available",
+                    "Remove nearby weeds that may host rust",
+                    "Maintain proper plant nutrition",
+                    "Monitor regularly for early signs"
+                ],
+                icon: "⚠️",
+                class: "moderate"
+            },
+            wilt: {
+                name: "Wilt Disease",
+                description: "Vascular disease causing plants to wilt despite adequate water. Fungus blocks water transport in the plant.",
+                solutions: [
+                    "Remove and destroy infected plants completely",
+                    "Do not compost infected material",
+                    "Solarize soil in affected areas",
+                    "Apply biocontrol agents for mild cases"
+                ],
+                prevention: [
+                    "Practice long-term crop rotation",
+                    "Use resistant varieties",
+                    "Maintain soil health with organic matter",
+                    "Avoid overwatering and waterlogging"
+                ],
+                icon: "🚨",
+                class: "diseased"
+            },
+            pestDamage: {
+                name: "Pest Damage",
+                description: "Damage caused by insects such as aphids, caterpillars, or mites. May include holes, discoloration, or distorted growth.",
+                solutions: [
+                    "Identify the specific pest first",
+                    "Use insecticidal soap or neem oil",
+                    "Introduce beneficial insects (ladybugs, lacewings)",
+                    "Handpick larger pests when possible"
+                ],
+                prevention: [
+                    "Use row covers to protect young plants",
+                    "Encourage beneficial insects in garden",
+                    "Maintain plant health to resist pests",
+                    "Regular monitoring for pest presence"
+                ],
+                icon: "⚠️",
+                class: "moderate"
+            }
+        };
+
+        // DOM elements
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const previewContainer = document.getElementById('previewContainer');
+        const previewImage = document.getElementById('previewImage');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const resultPlaceholder = document.getElementById('resultPlaceholder');
+        const loading = document.getElementById('loading');
+        const resultContent = document.getElementById('resultContent');
+
+        // Store current file for upload
+        let currentFile = null;
+
+        // Event listeners
+        uploadArea.addEventListener('click', () => fileInput.click());
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        analyzeBtn.addEventListener('click', analyzeImage);
+        
+        resetBtn.addEventListener('click', resetUpload);
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('Please upload an image file');
+                return;
+            }
+
+            if (file.size > 10 * 1024 * 1024) {
+                alert('File size should be less than 10MB');
+                return;
+            }
+
+            currentFile = file;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                previewContainer.classList.add('active');
+                uploadArea.style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function resetUpload() {
+            fileInput.value = '';
+            currentFile = null;
+            previewContainer.classList.remove('active');
+            uploadArea.style.display = 'block';
+            resultContent.classList.remove('active');
+            resultPlaceholder.style.display = 'block';
+        }
+
+        async function analyzeImage() {
+            if (!currentFile) {
+                alert('Please select an image first');
+                return;
+            }
+
+            // Show loading
+            resultPlaceholder.style.display = 'none';
+            resultContent.classList.remove('active');
+            loading.style.display = 'block';
+            analyzeBtn.disabled = true;
+
+            try {
+                // Create form data
+                const formData = new FormData();
+                formData.append('image', currentFile);
+
+                // Call backend API
+                const response = await fetch(`${API_BASE_URL}/analyze`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayResultsFromAPI(data.result);
+                } else {
+                    throw new Error(data.error || 'Analysis failed');
+                }
+
+            } catch (error) {
+                console.error('Analysis error:', error);
+                // Fallback to local simulation if API fails
+                alert('Backend API not available. Using local simulation.');
+                const result = simulateDetection();
+                displayResults(result);
+            } finally {
+                loading.style.display = 'none';
+                resultContent.classList.add('active');
+                analyzeBtn.disabled = false;
+            }
+        }
+
+        function displayResultsFromAPI(result) {
+            // Determine status class based on disease
+            let statusClass = 'healthy';
+            let icon = '✅';
+            
+            if (result.disease !== 'healthy') {
+                statusClass = result.confidence > 90 ? 'diseased' : 'moderate';
+                icon = result.confidence > 90 ? '🚨' : '⚠️';
+            }
+
+            // Update health status
+            const healthStatus = document.getElementById('healthStatus');
+            healthStatus.className = 'health-status ' + statusClass;
+            
+            document.getElementById('statusIcon').textContent = icon;
+            document.getElementById('statusTitle').textContent = result.diseaseName;
+            document.getElementById('statusDisease').textContent = result.disease === 'healthy' 
+                ? 'No disease detected' 
+                : 'Disease detected';
+            
+            // Animate confidence bar
+            setTimeout(() => {
+                document.getElementById('confidenceFill').style.width = result.confidence + '%';
+            }, 100);
+            document.getElementById('confidenceText').textContent = `Confidence: ${result.confidence}%`;
+            
+            // Update description
+            document.getElementById('diseaseDescription').textContent = result.description;
+            
+            // Update solutions
+            const solutionList = document.getElementById('solutionList');
+            solutionList.innerHTML = result.solutions.map(s => 
+                `<li><span class="solution-icon">✓</span>${s}</li>`
+            ).join('');
+            
+            // Update prevention
+            const preventionList = document.getElementById('preventionList');
+            preventionList.innerHTML = result.prevention.map(p => 
+                `<li><span class="solution-icon">✓</span>${p}</li>`
+            ).join('');
+        }
+
+        function simulateDetection() {
+            // Simulate AI detection with random results
+            const diseases = Object.keys(diseaseDatabase);
+            const randomDisease = diseases[Math.floor(Math.random() * diseases.length)];
+            const confidence = Math.floor(Math.random() * 15) + 85; // 85-99%
+            
+            return {
+                disease: randomDisease,
+                confidence: confidence
+            };
+        }
+
+        function displayResults(result) {
+            const disease = diseaseDatabase[result.disease];
+            
+            // Update health status
+            const healthStatus = document.getElementById('healthStatus');
+            healthStatus.className = 'health-status ' + disease.class;
+            
+            document.getElementById('statusIcon').textContent = disease.icon;
+            document.getElementById('statusTitle').textContent = disease.name;
+            document.getElementById('statusDisease').textContent = result.disease === 'healthy' 
+                ? 'No disease detected' 
+                : 'Disease detected';
+            
+            // Animate confidence bar
+            setTimeout(() => {
+                document.getElementById('confidenceFill').style.width = result.confidence + '%';
+            }, 100);
+            document.getElementById('confidenceText').textContent = `Confidence: ${result.confidence}%`;
+            
+            // Update description
+            document.getElementById('diseaseDescription').textContent = disease.description;
+            
+            // Update solutions
+            const solutionList = document.getElementById('solutionList');
+            solutionList.innerHTML = disease.solutions.map(s => 
+                `<li><span class="solution-icon">✓</span>${s}</li>`
+            ).join('');
+            
+            // Update prevention
+            const preventionList = document.getElementById('preventionList');
+            preventionList.innerHTML = disease.prevention.map(p => 
+                `<li><span class="solution-icon">✓</span>${p}</li>`
+            ).join('');
+        }
+
+        // Check API health on page load
+        async function checkAPIHealth() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`);
+                if (response.ok) {
+                    console.log('✅ Backend API is available');
+                }
+            } catch (error) {
+                console.log('⚠️ Backend API not available - using local simulation mode');
+            }
+        }
+
+        // Check API health when page loads
+        checkAPIHealth();
+    </script>
+</body>
+</html>
