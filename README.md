@@ -30,6 +30,8 @@ A web-based application that:
 
 It is simple and easy to use.
 
+This is the google drive link of our idea:
+https://drive.google.com/drive/folders/1K9nLYjIrkS2TvGaj-SxNb2L3M04jeaNx?usp=sharing
 ---
 
 ## System Architecture
